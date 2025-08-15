@@ -24,6 +24,9 @@ class VSCodeSSEConfig(val url: String, val type: String) : ServerConfig()
 class ClaudeCodeSSEConfig(val url: String, val type: String) : ServerConfig()
 
 @Serializable
+class GooseSSEConfig(val url: String, val type: String) : ServerConfig()
+
+@Serializable
 class STDIOServerConfig(
   val command: String? = null,
   val args: List<String>? = null,
@@ -54,4 +57,22 @@ data class McpServers(
 @Serializable
 data class VSCodeConfig(
   val servers: Map<String, ExistingConfig>? = null
+)
+
+// Note: Goose uses YAML config with extensions, not JSON with mcpServers
+// This is a placeholder for compatibility - actual Goose detection would need YAML parsing
+@JsonIgnoreUnknownKeys
+@Serializable
+data class GooseConfig(
+  val extensions: Map<String, GooseExtension>? = null
+)
+
+@JsonIgnoreUnknownKeys
+@Serializable
+data class GooseExtension(
+  val cmd: String? = null,
+  val args: List<String>? = null,
+  val envs: Map<String, String>? = null,
+  val type: String? = null,
+  val enabled: Boolean? = null
 )

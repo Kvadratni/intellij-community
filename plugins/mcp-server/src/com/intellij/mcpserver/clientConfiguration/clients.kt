@@ -32,6 +32,7 @@ enum class MCPClientNames(val displayName: String){
   CURSOR_GLOBAL("Cursor"),
   CLAUDE_CODE_PROJECT("Claude Code (Project)"),
   CLAUDE_CODE_GLOBAL("Claude Code"),
+  GOOSE_GLOBAL("Goose"),
 }
 
 open class McpClient(
@@ -239,5 +240,55 @@ class VSCodeClient(configPath: Path) : McpClient(MCPClientNames.VS_CODE_GLOBAL, 
         put(JETBRAINS_SERVER_KEY, json.encodeToJsonElement<ServerConfig>(serverEntry))
       })
     }
+  }
+}
+
+// Goose uses YAML config with extensions, not JSON with mcpServers
+// This client handles Goose's unique configuration format
+class GooseClient(configPath: Path) : McpClient(MCPClientNames.GOOSE_GLOBAL, configPath) {
+  override fun isConfigured(): Boolean? {
+    // Check if jetbrains extension is configured in Goose's YAML config
+    // Since we can't parse YAML directly here, we'll check if the config exists
+    // and assume it needs configuration if the file exists
+    if (!configPath.exists()) return null
+    
+    // Read the file as text and check for jetbrains extension
+    val content = runCatching { configPath.toFile().readText() }.getOrElse { return null }
+    
+    // Check if jetbrains extension exists and is enabled
+    if (content.contains("jetbrains:") || content.contains("jetbrains2:")) {
+      // Check if it's enabled
+      val jetbrainsSection = content.substringAfter("jetbrains").substringBefore(":")
+        .substringBefore("\n").substringBefore("  ")
+      return content.contains("jetbrains") && !content.contains("jetbrains:.*enabled: false".toRegex())
+    }
+    
+    return false
+  }
+  
+  override fun getSSEConfig(): ServerConfig = GooseSSEConfig(url = sseUrl, type = "sse")
+  
+  // Goose doesn't use JSON mcpServers, so we return empty map
+  override fun readMcpServers(): Map<String, ExistingConfig>? {
+    return emptyMap()
+  }
+  
+  override fun configure() {
+    // For Goose, we would need to modify the YAML config to add/enable jetbrains extension
+    // This is a simplified version - actual implementation would need YAML parsing
+    runWithModalProgressBlocking(ModalTaskOwner.guess(), McpServerBundle.message("autoconfigure.progress.title"), TaskCancellation.nonCancellable()) {
+      // Note: Actual implementation would need to:
+      // 1. Parse YAML config
+      // 2. Add or update jetbrains extension with SSE configuration
+      // 3. Write back YAML config
+      // For now, we'll just create a simple notification
+      throw UnsupportedOperationException("Goose YAML configuration update not yet implemented. Please manually add jetbrains extension to ~/.config/goose/config.yaml")
+    }
+  }
+  
+  override fun buildUpdatedConfig(existingConfig: JsonObject, serverEntry: ServerConfig): JsonObject {
+    // Goose uses YAML, not JSON, so this method isn't applicable
+    // Return the existing config unchanged
+    return existingConfig
   }
 }

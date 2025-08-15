@@ -27,6 +27,9 @@ object McpClientDetector {
     val globalClients = mutableListOf<McpClient>()
 
     runCatching {
+      globalClients.addIfNotNull(detectGoose())
+    }
+    runCatching {
       globalClients.addIfNotNull(detectVSCode())
     }
     runCatching {
@@ -67,6 +70,23 @@ object McpClientDetector {
       return content.contains("mcpServers")
     }
     return false
+  }
+
+  private fun detectGoose(): McpClient? {
+    // Goose uses YAML config at ~/.config/goose/config.yaml
+    val configPath = when {
+      SystemInfo.isMac -> "~/.config/goose/config.yaml"
+      SystemInfo.isWindows -> System.getenv("APPDATA")?.let { "$it/goose/config.yaml" }
+      SystemInfo.isLinux -> "~/.config/goose/config.yaml"
+      else -> null
+    }
+    if (configPath == null) return null
+    val path = Paths.get(FileUtil.expandUserHome(configPath))
+    // Check if the config file exists
+    if (path.exists() && path.isRegularFile()) {
+      return GooseClient(path)
+    }
+    return null
   }
 
   @OptIn(ExperimentalSerializationApi::class)
